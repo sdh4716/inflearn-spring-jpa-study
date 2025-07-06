@@ -27,10 +27,11 @@ public class Order {
     @OneToOne
     @JoinColumn(name = "delivery_id")
     // 1대1 매핑일 경우에는 주인을 자주 쓰는 테이블로 해주는게 좋다. 여기서의 경우는 Order
-    private Delivery delivery;
+    private Delivery delivery; // 배송정보
 
     private LocalDateTime orderDate; // 주문시간
 
+    @Enumerated(EnumType.STRING)
     private OrderStatus status; // 주문상태 [ORDER, CANCEL]
 
 }
