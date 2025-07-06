@@ -10,6 +10,6 @@ import lombok.Setter;
 @Getter @Setter
 public class Movie extends Item {
 
-    private String artist;
-    private String etc;
+    private String director;
+    private String actor;
 }
