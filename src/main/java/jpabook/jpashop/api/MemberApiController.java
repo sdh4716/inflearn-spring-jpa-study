@@ -9,11 +9,44 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequiredArgsConstructor
 public class MemberApiController {
 
     private final MemberService memberService;
+
+    // v1 : 엔티티의 모든 정보가 노출됨. 회원의 주문정보도 노출됨.
+    // @JsonIgnore을 사용해 없앨 수 있지만, 엔티티를 활용하는 부분이 영향을 받음.
+    @GetMapping("/api/v1/members")
+    public List<Member> memberV1() {
+        return memberService.findMembers();
+    }
+
+    @GetMapping("/api/v2/members")
+    public Result memberV2() {
+        List<Member> findMembers = memberService.findMembers();
+        List<MemberDto> collect = findMembers.stream()
+                .map(m -> new MemberDto(m.getName()))
+                .collect(Collectors.toList());
+
+        return new Result(collect.size(), collect);
+    }
+
+    @Data
+    @AllArgsConstructor
+    static class Result<T> {
+        int count;
+        private T data;
+    }
+
+    @Data
+    @AllArgsConstructor
+    static class MemberDto {
+        private String name;
+    }
 
     // 1번은 엔티티를 바로 받아옴, API 스펙이 바뀌어버림 (안씀)
     // 엔티티를 외부에 노출하면 안됨. DB구조 까지 드러나 버릴 수 있음.
@@ -27,7 +60,6 @@ public class MemberApiController {
     // 1번과 다르게 DTO를 보면 API 스펙에서 어떤 파라미터를 받는 지 바로 알 수 있음.
     @PostMapping("/api/v2/members")
     public CreateMemberResponse saveMemberV2(@RequestBody @Valid CreateMemberRequest request) {
-
         Member member = new Member();
         member.setName(request.getName());
 
