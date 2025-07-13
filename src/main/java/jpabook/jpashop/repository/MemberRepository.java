@@ -1,33 +1,14 @@
 package jpabook.jpashop.repository;
 
+import jakarta.validation.constraints.NotEmpty;
 import jpabook.jpashop.domain.Member;
-import org.springframework.stereotype.Repository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import org.springframework.data.jpa.repository.JpaRepository;
+
 import java.util.List;
 
-@Repository
-public class MemberRepository {
+// Spring Data JPA를 사용. JPARepository를 의존하면
+// 기본으로 제공되는 매서드들을 사용할 수 있음.
+public interface MemberRepository extends JpaRepository<Member, Long> {
 
-    @PersistenceContext
-    private EntityManager em;
-
-    public void save(Member member) {
-        em.persist(member);
-    }
-
-    public Member findOne(Long id) {
-        return em.find(Member.class, id);
-    }
-
-    public List<Member> findAll() {
-        return em.createQuery("select m from Member m", Member.class)
-                .getResultList();
-    }
-
-    public List<Member> findByName(String name) {
-        return em.createQuery("select m from Member m where m.name = :name", Member.class)
-                .setParameter("name", name)
-                .getResultList();
-    }
+    List<Member> findByName(@NotEmpty String name);
 }
