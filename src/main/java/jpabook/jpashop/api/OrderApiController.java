@@ -6,9 +6,10 @@ import jpabook.jpashop.domain.OrderItem;
 import jpabook.jpashop.domain.OrderStatus;
 import jpabook.jpashop.repository.OrderRepository;
 import jpabook.jpashop.repository.OrderSearch;
+import jpabook.jpashop.repository.order.query.OrderFlatDto;
+import jpabook.jpashop.repository.order.query.OrderItemQueryDto;
 import jpabook.jpashop.repository.order.query.OrderQueryDto;
 import jpabook.jpashop.repository.order.query.OrderQueryRepository;
-import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,7 +34,6 @@ public class OrderApiController {
     private List<Order> ordersV1() {
         List<Order> all = orderRepository.findAllByString(new OrderSearch());
         // intellij [iter] 입력하면 for문 만들어줌
-        //
         for (Order order : all) {
             order.getMember().getName();
             order.getDelivery().getAddress();
@@ -84,6 +84,7 @@ public class OrderApiController {
 
     // 주문 조회 V3.1: 엔티티를 DTO로 변환 - 페이징과 한계 돌파
     // xToOne 관계만 fetch join
+    // 컬렉션은 Lazy Loading을 유지하고 hibernate.default_batch_fetch_size, @BatchSize로 최적화
     // v3에 비해 쿼리 횟수는 늘어나지만, DB 데이터 전송량이 줄어든다.
     // 페이징 가능
     @GetMapping("/api/v3.1/orders")
@@ -99,14 +100,39 @@ public class OrderApiController {
         return result;
     }
 
+    // 주문 조회 V4: JPA에서 DTO 직접 조회
     @GetMapping("/api/v4/orders")
     public List<OrderQueryDto> ordersV4() {
         return orderQueryRepository.findOrderQueryDtos();
     }
 
+    // 주문 조회 V5: JPA에서 DTO 직접 조회 - 컬렉션 조회 최적화
     @GetMapping("/api/v5/orders")
     public List<OrderQueryDto> ordersV5() {
         return orderQueryRepository.findAllByDto_optimization();
+    }
+
+    // 주문 조회 V6: JPA에서 DTO로 직접 조회, 플랫 데이터 최적화
+    // [ 장점 ] : 쿼리 1번에 끝남.
+    // [ 단점 ]
+    // 쿼리는 한번이지만 조인으로 인해 DB에서 애플리케이션에 전달하는 데이터에 중복 데이터가 추가되므로
+    // 상황에 따라 V5 보다 더 느릴 수 도 있다.
+    // 애플리케이션에서 추가 작업이 크다.
+    // 페이징 불가능
+    @GetMapping("/api/v6/orders")
+    public List<OrderQueryDto> ordersV6() {
+        List<OrderFlatDto> flats = orderQueryRepository.findAllByDto_flat();
+
+        return flats.stream()
+                .collect(groupingBy(o -> new OrderQueryDto(o.getOrderId(),
+                                o.getName(), o.getOrderDate(), o.getOrderStatus(), o.getAddress()),
+                        mapping(o -> new OrderItemQueryDto(o.getOrderId(),
+                                o.getItemName(), o.getOrderPrice(), o.getCount()), toList())
+                )).entrySet().stream()
+                .map(e -> new OrderQueryDto(e.getKey().getOrderId(),
+                        e.getKey().getName(), e.getKey().getOrderDate(), e.getKey().getOrderStatus(),
+                        e.getKey().getAddress(), e.getValue()))
+                .collect(toList());
     }
 
     @Getter // 또는 @Data -> 안쓰는게 나은 경우도 있음.
